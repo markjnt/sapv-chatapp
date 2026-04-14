@@ -1,32 +1,31 @@
 services:
-  ollama:
-    volumes:
-      - ollama:/root/.ollama
-    container_name: ollama
-    pull_policy: always
-    tty: true
-    restart: unless-stopped
-    image: ollama/ollama:${OLLAMA_DOCKER_TAG-latest}
-
   open-webui:
-    build:
-      context: .
-      dockerfile: Dockerfile
-    image: ghcr.io/open-webui/open-webui:${WEBUI_DOCKER_TAG-main}
+    image: markjnt/sapv-chatapp
     container_name: open-webui
+    pull_policy: always
     volumes:
       - open-webui:/app/backend/data
-    depends_on:
-      - ollama
-    ports:
-      - ${OPEN_WEBUI_PORT-3000}:8080
     environment:
-      - 'OLLAMA_BASE_URL=http://ollama:11434'
-      - 'WEBUI_SECRET_KEY='
-    extra_hosts:
-      - host.docker.internal:host-gateway
+      - 'OLLAMA_BASE_URL=${OLLAMA_BASE_URL}'
+      - 'WEBUI_SECRET_KEY=${WEBUI_SECRET_KEY}'
+    env_file:
+      - .env
+    networks:
+      - traefik-public
     restart: unless-stopped
+    labels:
+      - "traefik.enable=true"
+      - "traefik.docker.network=traefik-public"
+      - "traefik.http.routers.sapv-chatapp.rule=Host(`${WEB_DOMAIN}`)"
+      - "traefik.http.routers.sapv-chatapp.entrypoints=websecure"
+      - "traefik.http.routers.sapv-chatapp.tls.certresolver=letsencrypt"
+      - "traefik.http.services.sapv-chatapp.loadbalancer.server.port=8080"
+      - "traefik.http.services.sapv-chatapp.loadbalancer.server.scheme=http"
 
 volumes:
-  ollama: {}
   open-webui: {}
+
+networks:
+  traefik-public:
+    external: true
+    name: traefik-public
