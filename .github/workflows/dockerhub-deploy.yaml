@@ -1,4 +1,4 @@
-name: Docker Image CI
+name: Deploy to Docker Hub and Linux Server
 
 on:
   workflow_dispatch:
