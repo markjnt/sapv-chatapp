@@ -62,7 +62,7 @@
 		removeTerminalConnection
 	} from '$lib/utils/connections';
 
-	import { WEBUI_API_BASE_URL, WEBUI_BASE_URL, WEBUI_HOSTNAME } from '$lib/constants';
+	import { APP_NAME, WEBUI_API_BASE_URL, WEBUI_BASE_URL, WEBUI_HOSTNAME } from '$lib/constants';
 	import {
 		bestMatchingLanguage,
 		cleanText,
@@ -1123,7 +1123,7 @@
 		if (backendConfig) {
 			// Save Backend Status to Store
 			await config.set(backendConfig);
-			await WEBUI_NAME.set(backendConfig.name);
+			await WEBUI_NAME.set(APP_NAME);
 
 			if ($config) {
 				await setupSocket($config.features?.enable_websocket ?? true);
