@@ -3,6 +3,8 @@ services:
     image: searxng/searxng:latest
     container_name: searxng
     pull_policy: always
+    volumes:
+      - ./searxng-settings.yml:/etc/searxng/settings.yml:ro
     restart: unless-stopped
     networks:
       - traefik-public
