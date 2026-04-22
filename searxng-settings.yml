@@ -1,6 +1,7 @@
 use_default_settings: true
 
 server:
+  secret_key: "please-change-me"
   limiter: false
 
 search:
