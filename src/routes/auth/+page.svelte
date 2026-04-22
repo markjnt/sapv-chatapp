@@ -243,7 +243,7 @@
 							</div>
 							<img
 								crossorigin="anonymous"
-								src="{WEBUI_BASE_URL}/static/text_logo.png"
+								src="{WEBUI_BASE_URL}/text_logo.png"
 								class="mx-auto mt-3 w-[16rem] sm:w-[24rem] h-auto object-contain"
 								alt="SAPV Oberberg"
 							/>
