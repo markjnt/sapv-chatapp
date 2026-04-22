@@ -3,6 +3,8 @@ use_default_settings: true
 server:
   secret_key: "please-change-me"
   limiter: false
+  image_proxy: false
+  forwarding_allow_ips: "*"
 
 search:
   formats:
