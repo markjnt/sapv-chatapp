@@ -210,6 +210,14 @@
 
 <div class="w-full h-screen max-h-[100dvh] text-white relative" id="auth-page">
 	<div class="w-full h-full absolute top-0 left-0 bg-white dark:bg-black"></div>
+	<div class="pointer-events-none absolute inset-0 flex items-center justify-center z-0" aria-hidden="true">
+		<img
+			crossorigin="anonymous"
+			src="{WEBUI_BASE_URL}/static/favicon.png"
+			class="w-[46rem] sm:w-[64rem] lg:w-[84rem] opacity-10 dark:opacity-15"
+			alt=""
+		/>
+	</div>
 
 	<div class="w-full absolute top-0 left-0 right-0 h-8 drag-region" />
 
@@ -234,17 +242,11 @@
 						</div>
 					</div>
 				{:else}
-					<div class="my-auto flex flex-col justify-center items-center relative overflow-hidden">
+					<div class="w-full min-h-screen relative flex flex-col items-center justify-center">
 						<div
-							class="pointer-events-none absolute inset-0 flex items-center justify-center z-0"
-							aria-hidden="true"
+							class="absolute top-16 sm:top-20 left-1/2 -translate-x-1/2 w-full px-6 text-center text-2xl sm:text-4xl font-semibold tracking-wide text-gray-700 dark:text-gray-200"
 						>
-							<img
-								crossorigin="anonymous"
-								src="{WEBUI_BASE_URL}/static/favicon.png"
-								class="w-[40rem] sm:w-[56rem] lg:w-[70rem] opacity-10 dark:opacity-15"
-								alt=""
-							/>
+							Willkommen zur Künstlichen Intelligenz von SAPV Oberberg
 						</div>
 						<div class="relative z-10 sm:max-w-md my-auto pb-10 w-full dark:text-gray-100">
 							{#if $config?.metadata?.auth_logo_position === 'center'}
@@ -266,11 +268,6 @@
 								}}
 							>
 								<div class="mb-1">
-									<div
-										class="-mt-12 sm:-mt-16 text-lg sm:text-2xl font-semibold tracking-wide mb-3 text-gray-700 dark:text-gray-300"
-									>
-										Willkommen zur Künstlichen Intelligenz von SAPV Oberberg
-									</div>
 									<div class=" text-2xl font-medium">
 										{#if $config?.onboarding ?? false}
 											{$i18n.t(`Get started with {{WEBUI_NAME}}`, { WEBUI_NAME: $WEBUI_NAME })}
