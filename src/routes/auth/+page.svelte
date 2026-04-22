@@ -210,14 +210,6 @@
 
 <div class="w-full h-screen max-h-[100dvh] text-white relative" id="auth-page">
 	<div class="w-full h-full absolute top-0 left-0 bg-white dark:bg-black"></div>
-	<div class="pointer-events-none absolute inset-0 flex items-center justify-center z-0" aria-hidden="true">
-		<img
-			crossorigin="anonymous"
-			src="{WEBUI_BASE_URL}/static/favicon.png"
-			class="w-[46rem] sm:w-[64rem] lg:w-[84rem] opacity-10 dark:opacity-15"
-			alt=""
-		/>
-	</div>
 
 	<div class="w-full absolute top-0 left-0 right-0 h-8 drag-region" />
 
@@ -244,22 +236,19 @@
 				{:else}
 					<div class="w-full min-h-screen relative flex flex-col items-center justify-center">
 						<div
-							class="absolute top-16 sm:top-20 left-1/2 -translate-x-1/2 w-full px-6 text-center text-2xl sm:text-4xl font-semibold tracking-wide text-gray-700 dark:text-gray-200"
+							class="absolute top-14 sm:top-16 left-1/2 -translate-x-1/2 w-full px-6 text-center text-gray-700 dark:text-gray-200"
 						>
-							Willkommen zur Künstlichen Intelligenz von SAPV Oberberg
+							<div class="text-xl sm:text-3xl font-semibold tracking-wide">
+								Willkommen zur Künstlichen Intelligenz von
+							</div>
+							<img
+								crossorigin="anonymous"
+								src="{WEBUI_BASE_URL}/static/text_logo.png"
+								class="mx-auto mt-3 w-[16rem] sm:w-[24rem] h-auto object-contain"
+								alt="SAPV Oberberg"
+							/>
 						</div>
 						<div class="relative z-10 sm:max-w-md my-auto pb-10 w-full dark:text-gray-100">
-							{#if $config?.metadata?.auth_logo_position === 'center'}
-								<div class="flex justify-center mb-6">
-									<img
-										id="logo"
-										crossorigin="anonymous"
-										src="{WEBUI_BASE_URL}/static/favicon.png"
-										class="size-24 rounded-full"
-										alt="{$WEBUI_NAME} logo"
-									/>
-								</div>
-							{/if}
 							<form
 								class="relative z-10 flex flex-col justify-center"
 								on:submit={(e) => {
@@ -599,20 +588,5 @@
 			</div>
 		</div>
 
-		{#if !$config?.metadata?.auth_logo_position}
-			<div class="fixed m-10 z-50">
-				<div class="flex space-x-2">
-					<div class=" self-center">
-						<img
-							id="logo"
-							crossorigin="anonymous"
-							src="{WEBUI_BASE_URL}/static/favicon.png"
-							class=" w-6 rounded-full"
-							alt=""
-						/>
-					</div>
-				</div>
-			</div>
-		{/if}
 	{/if}
 </div>
