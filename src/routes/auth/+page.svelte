@@ -242,7 +242,7 @@
 							<img
 								crossorigin="anonymous"
 								src="{WEBUI_BASE_URL}/static/favicon.png"
-								class="w-[28rem] sm:w-[36rem] lg:w-[44rem] opacity-10 dark:opacity-15"
+								class="w-[40rem] sm:w-[56rem] lg:w-[70rem] opacity-10 dark:opacity-15"
 								alt=""
 							/>
 						</div>
@@ -266,7 +266,9 @@
 								}}
 							>
 								<div class="mb-1">
-									<div class="text-sm sm:text-base font-semibold tracking-wide mb-2 text-gray-700 dark:text-gray-300">
+									<div
+										class="-mt-12 sm:-mt-16 text-lg sm:text-2xl font-semibold tracking-wide mb-3 text-gray-700 dark:text-gray-300"
+									>
 										Willkommen zur Künstlichen Intelligenz von SAPV Oberberg
 									</div>
 									<div class=" text-2xl font-medium">
