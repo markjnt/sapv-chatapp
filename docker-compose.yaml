@@ -1,8 +1,18 @@
 services:
+  searxng:
+    image: searxng/searxng:latest
+    container_name: searxng
+    pull_policy: always
+    restart: unless-stopped
+    networks:
+      - traefik-public
+
   open-webui:
     image: markjnt/sapv-chatapp
     container_name: open-webui
     pull_policy: always
+    depends_on:
+      - searxng
     volumes:
       - open-webui:/app/backend/data
     environment:
