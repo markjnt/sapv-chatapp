@@ -234,8 +234,19 @@
 						</div>
 					</div>
 				{:else}
-					<div class="my-auto flex flex-col justify-center items-center">
-						<div class=" sm:max-w-md my-auto pb-10 w-full dark:text-gray-100">
+					<div class="my-auto flex flex-col justify-center items-center relative overflow-hidden">
+						<div
+							class="pointer-events-none absolute inset-0 flex items-center justify-center z-0"
+							aria-hidden="true"
+						>
+							<img
+								crossorigin="anonymous"
+								src="{WEBUI_BASE_URL}/static/favicon.png"
+								class="w-[28rem] sm:w-[36rem] lg:w-[44rem] opacity-10 dark:opacity-15"
+								alt=""
+							/>
+						</div>
+						<div class="relative z-10 sm:max-w-md my-auto pb-10 w-full dark:text-gray-100">
 							{#if $config?.metadata?.auth_logo_position === 'center'}
 								<div class="flex justify-center mb-6">
 									<img
@@ -248,22 +259,25 @@
 								</div>
 							{/if}
 							<form
-								class=" flex flex-col justify-center"
+								class="relative z-10 flex flex-col justify-center"
 								on:submit={(e) => {
 									e.preventDefault();
 									submitHandler();
 								}}
 							>
 								<div class="mb-1">
+									<div class="text-sm sm:text-base font-semibold tracking-wide mb-2 text-gray-700 dark:text-gray-300">
+										Willkommen zur Künstlichen Intelligenz von SAPV Oberberg
+									</div>
 									<div class=" text-2xl font-medium">
 										{#if $config?.onboarding ?? false}
 											{$i18n.t(`Get started with {{WEBUI_NAME}}`, { WEBUI_NAME: $WEBUI_NAME })}
 										{:else if mode === 'ldap'}
 											{$i18n.t(`Sign in to {{WEBUI_NAME}} with LDAP`, { WEBUI_NAME: $WEBUI_NAME })}
 										{:else if mode === 'signin'}
-											{$i18n.t(`Sign in to {{WEBUI_NAME}}`, { WEBUI_NAME: $WEBUI_NAME })}
+											Anmelden
 										{:else}
-											{$i18n.t(`Sign up to {{WEBUI_NAME}}`, { WEBUI_NAME: $WEBUI_NAME })}
+											Registrieren
 										{/if}
 									</div>
 
@@ -384,10 +398,10 @@
 												type="submit"
 											>
 												{mode === 'signin'
-													? $i18n.t('Sign in')
+													? 'Anmelden'
 													: ($config?.onboarding ?? false)
 														? $i18n.t('Create Admin Account')
-														: $i18n.t('Create Account')}
+														: 'Registrieren'}
 											</button>
 
 											{#if $config?.features.enable_signup && !($config?.onboarding ?? false)}
@@ -407,7 +421,7 @@
 															}
 														}}
 													>
-														{mode === 'signin' ? $i18n.t('Sign up') : $i18n.t('Sign in')}
+														{mode === 'signin' ? 'Registrieren' : 'Anmelden'}
 													</button>
 												</div>
 											{/if}
