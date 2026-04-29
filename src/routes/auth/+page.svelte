@@ -234,21 +234,21 @@
 						</div>
 					</div>
 				{:else}
-					<div class="w-full min-h-screen relative flex flex-col items-center justify-center">
+					<div class="w-full min-h-screen flex flex-col items-center">
 						<div
-							class="absolute top-14 sm:top-16 left-1/2 -translate-x-1/2 w-full px-6 text-center text-gray-700 dark:text-gray-200"
+							class="w-full px-6 pt-14 sm:pt-16 pb-6 text-center text-gray-700 dark:text-gray-200"
 						>
 							<div class="text-xl sm:text-3xl font-semibold tracking-wide">
 								Willkommen zur Künstlichen Intelligenz von
 							</div>
 							<img
 								crossorigin="anonymous"
-								src="{WEBUI_BASE_URL}/text_logo.png"
+								src="/text_logo.png"
 								class="mx-auto mt-3 w-[9rem] sm:w-[14rem] h-auto object-contain"
 								alt="SAPV Oberberg"
 							/>
 						</div>
-						<div class="relative z-10 sm:max-w-md my-auto pb-10 w-full dark:text-gray-100">
+						<div class="relative z-10 sm:max-w-md w-full pb-10 dark:text-gray-100">
 							<form
 								class="relative z-10 flex flex-col justify-center"
 								on:submit={(e) => {
