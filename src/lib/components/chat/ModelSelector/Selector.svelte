@@ -14,6 +14,7 @@
 	import { goto } from '$app/navigation';
 
 	import { deleteModel, getOllamaVersion, pullModel, unloadModel } from '$lib/apis/ollama';
+	import { WEBUI_API_BASE_URL } from '$lib/constants';
 
 	import {
 		user,
@@ -531,7 +532,18 @@
 			}}
 		>
 			{#if selectedModel}
-				{selectedModel.label}
+				<div class="flex items-center gap-2 truncate">
+					<img
+						src={`${WEBUI_API_BASE_URL}/models/model/profile/image?id=${selectedModel.model.id}&lang=${$i18n.language}`}
+						alt={$i18n.t('{{modelName}} profile image', { modelName: selectedModel.label })}
+						class="rounded-full size-5 shrink-0"
+						loading="lazy"
+						on:error={(e) => {
+							e.currentTarget.src = '/favicon.png';
+						}}
+					/>
+					<span class="truncate">{selectedModel.label}</span>
+				</div>
 			{:else}
 				{placeholder}
 			{/if}
