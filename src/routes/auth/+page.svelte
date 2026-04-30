@@ -239,7 +239,7 @@
 							class="w-full px-6 pt-14 sm:pt-16 pb-6 text-center text-gray-700 dark:text-gray-200"
 						>
 							<div class="text-xl sm:text-3xl font-semibold tracking-wide">
-								Willkommen zur Künstlichen Intelligenz von
+								Willkommen zur Künstlichen Intelligenz von der
 							</div>
 							<img
 								crossorigin="anonymous"
