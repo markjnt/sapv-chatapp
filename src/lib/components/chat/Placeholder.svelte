@@ -105,19 +105,13 @@
 					}}
 				/>
 			{:else}
-				<div class="flex flex-col items-center justify-center px-5 max-w-xl text-center">
+				<div class="flex flex-row justify-center w-fit px-5 max-w-xl">
 					<div
-						class="text-xl sm:text-3xl font-semibold tracking-wide text-gray-700 dark:text-gray-200"
+						class="text-3xl @sm:text-3xl line-clamp-1 flex items-center"
 						in:fade={{ duration: 100 }}
 					>
-						Willkommen zur Künstlichen Intelligenz von
+						{$i18n.t('Willkommen {{name}}, was steht heute an?', { name: ($user?.name ?? '').split(' ')[0] })}
 					</div>
-					<img
-						crossorigin="anonymous"
-						src="/text_logo.png"
-						class="mx-auto mt-3 w-[7.5rem] sm:w-[11rem] h-auto object-contain"
-						alt="SAPV Oberberg"
-					/>
 				</div>
 
 				<div class="flex mt-1 mb-2">
