@@ -110,7 +110,7 @@
 						class="text-3xl @sm:text-3xl line-clamp-1 flex items-center"
 						in:fade={{ duration: 100 }}
 					>
-						{$i18n.t('Willkommen {{name}}, was steht heute an?', { name: ($user?.name ?? '').split(' ')[0] })}
+						{$i18n.t('Hallo {{name}}, was steht heute an?', { name: ($user?.name ?? '').split(' ')[0] })}
 					</div>
 				</div>
 
