@@ -17,6 +17,7 @@
 	import Image from './Image.svelte';
 	import FullHeightIframe from './FullHeightIframe.svelte';
 	import { settings } from '$lib/stores';
+	import { WEBUI_API_BASE_URL } from '$lib/constants';
 
 	export let id: string = '';
 	export let attributes: {
@@ -273,6 +274,16 @@
 				{:else if typeof file === 'object'}
 					{#if (file.type === 'image' || (file?.content_type ?? '').startsWith('image/')) && file.url}
 						<Image id={`${componentId}-tool-call-result-${idx}`} src={file.url} alt="Image" />
+					{:else if file.url}
+						<a
+							class="inline-flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 hover:underline mt-1"
+							href={file.url.startsWith('http') ? file.url : `${WEBUI_API_BASE_URL}${file.url}`}
+							target="_blank"
+							rel="noopener noreferrer"
+							download={file.name}
+						>
+							{$i18n.t('Download')} {file.name || $i18n.t('File')}
+						</a>
 					{/if}
 				{/if}
 			{/each}

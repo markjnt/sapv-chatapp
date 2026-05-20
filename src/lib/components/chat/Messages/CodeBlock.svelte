@@ -2,7 +2,12 @@
 	import hljs from 'highlight.js';
 	import { toast } from 'svelte-sonner';
 	import { getContext, onMount, tick, onDestroy } from 'svelte';
-	import { config, pyodideWorker as pyodideWorkerStore } from '$lib/stores';
+	import { chatId, config, pyodideWorker as pyodideWorkerStore } from '$lib/stores';
+	import { WEBUI_API_BASE_URL } from '$lib/constants';
+	import {
+		snapshotPyodideUploadFiles,
+		uploadNewPyodideFiles
+	} from '$lib/utils/pyodideOutputFiles';
 
 	import { createPyodideWorker } from '$lib/pyodide/createPyodideWorker';
 	import { executeCode } from '$lib/apis/utils';
@@ -72,6 +77,7 @@
 	let stderr = null;
 	let result = null;
 	let files = null;
+	let outputFiles = [];
 
 	let copied = false;
 	let saved = false;
@@ -143,6 +149,7 @@
 		result = null;
 		stdout = null;
 		stderr = null;
+		outputFiles = [];
 
 		executing = true;
 
@@ -250,16 +257,28 @@
 			localPyodideWorker = worker;
 		}
 
+		let uploadsBefore = null;
+		try {
+			uploadsBefore = await snapshotPyodideUploadFiles(worker);
+		} catch (e) {
+			console.error('Failed to snapshot Pyodide uploads:', e);
+		}
+
 		worker.postMessage({
+			type: 'execute',
 			id: id,
 			code: code,
 			packages: packages
 		});
 
+		let finished = false;
+
 		const timeoutId = setTimeout(() => {
-			if (executing) {
+			if (executing && !finished) {
+				finished = true;
 				executing = false;
 				stderr = 'Execution Time Limit Exceeded';
+				worker.removeEventListener('message', handler);
 				if (!isShared) {
 					worker.terminate();
 					localPyodideWorker = null;
@@ -267,9 +286,13 @@
 			}
 		}, 60000);
 
-		const handler = (event) => {
+		const handler = async (event) => {
 			// Ignore messages from other requests on the shared worker
 			if (event.data?.id !== id) return;
+			if (event.data?.type?.startsWith('fs:')) return;
+			if (finished) return;
+
+			finished = true;
 
 			console.log('pyodideWorker.onmessage', event);
 			const { id: _id, ...data } = event.data;
@@ -339,6 +362,20 @@
 
 			clearTimeout(timeoutId);
 			worker.removeEventListener('message', handler);
+
+			if (uploadsBefore) {
+				try {
+					outputFiles = await uploadNewPyodideFiles(
+						worker,
+						localStorage.token,
+						uploadsBefore,
+						$chatId ? { chat_id: $chatId } : null
+					);
+				} catch (e) {
+					console.error('Failed to upload Pyodide output files:', e);
+				}
+			}
+
 			executing = false;
 
 			// Signal PyodideFileNav to auto-refresh after execution
@@ -412,6 +449,7 @@
 				stdout = output.stdout;
 				stderr = output.stderr;
 				result = output.result;
+				outputFiles = Array.isArray(output.files) ? output.files : [];
 			} catch (error) {
 				console.error('Error:', error);
 			}
@@ -610,7 +648,7 @@
 									</div>
 								</div>
 							{/if}
-							{#if result || files}
+							{#if result || files || outputFiles.length > 0}
 								<div class=" ">
 									<div class=" text-gray-500 text-xs mb-1">{$i18n.t('RESULT')}</div>
 									{#if result}
@@ -621,6 +659,25 @@
 											{#each files as file}
 												{#if file.type.startsWith('image')}
 													<img src={file.data} alt="Output" class=" w-full max-w-[36rem]" />
+												{/if}
+											{/each}
+										</div>
+									{/if}
+									{#if outputFiles.length > 0}
+										<div class="flex flex-col gap-1 mt-1">
+											{#each outputFiles as file}
+												{#if file.url}
+													<a
+														class="text-sm text-blue-600 dark:text-blue-400 hover:underline"
+														href={file.url.startsWith('http')
+															? file.url
+															: `${WEBUI_API_BASE_URL}${file.url}`}
+														target="_blank"
+														rel="noopener noreferrer"
+														download={file.name}
+													>
+														{$i18n.t('Download')} {file.name || $i18n.t('File')}
+													</a>
 												{/if}
 											{/each}
 										</div>

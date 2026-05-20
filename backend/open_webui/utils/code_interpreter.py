@@ -189,6 +189,21 @@ class JupyterCodeExecuter:
         self.result.result = '\n'.join(result).strip() if result else ''
 
 
+def append_file_download_links(stdout: str, files: list) -> str:
+    if not isinstance(files, list) or not files:
+        return stdout
+
+    download_lines = [
+        f"- [{file_item.get('name', 'file')}]({file_item.get('url')})"
+        for file_item in files
+        if isinstance(file_item, dict) and file_item.get('url')
+    ]
+    if not download_lines:
+        return stdout
+
+    return '\n'.join(part for part in [stdout, 'Files:\n' + '\n'.join(download_lines)] if part).strip()
+
+
 async def execute_code_jupyter(
     base_url: str, code: str, token: str = '', password: str = '', timeout: int = 60
 ) -> dict:

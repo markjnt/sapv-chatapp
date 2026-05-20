@@ -23,7 +23,7 @@ from open_webui.models.groups import Groups
 from open_webui.models.memories import Memories
 from open_webui.models.messages import Message, Messages
 from open_webui.models.notes import Notes
-from open_webui.models.users import UserModel
+from open_webui.utils.code_interpreter import append_file_download_links
 from open_webui.retrieval.utils import get_content_from_url
 from open_webui.retrieval.vector.async_client import ASYNC_VECTOR_DB_CLIENT
 from open_webui.routers.images import (
@@ -519,6 +519,8 @@ async def execute_code(
                 stderr = ''
                 result = str(output) if output else ''
 
+            output_files = output.get('files', []) if isinstance(output, dict) else []
+
         elif engine == 'jupyter':
             from open_webui.utils.code_interpreter import execute_code_jupyter
 
@@ -535,6 +537,7 @@ async def execute_code(
             stdout = output.get('stdout', '')
             stderr = output.get('stderr', '')
             result = output.get('result', '')
+            output_files = []
 
         else:
             return json.dumps({'error': f'Unknown code interpreter engine: {engine}'})
@@ -583,6 +586,10 @@ async def execute_code(
             'stderr': stderr,
             'result': result,
         }
+
+        if output_files:
+            response['files'] = output_files
+            response['stdout'] = append_file_download_links(stdout, output_files)
 
         return json.dumps(response, ensure_ascii=False)
     except Exception as e:
