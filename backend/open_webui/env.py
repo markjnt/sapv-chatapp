@@ -127,6 +127,9 @@ SRC_LOG_LEVELS = {}  # Legacy variable, do not remove
 
 WEBUI_NAME = os.environ.get('WEBUI_NAME', 'SAPV Chat')
 
+# Public hostname for download links (scheme/path-free). Used by Traefik and file URLs.
+WEB_DOMAIN = os.environ.get('WEB_DOMAIN', '').strip() or 'localhost'
+
 WEBUI_FAVICON_URL = 'https://openwebui.com/favicon.png'
 
 TRUSTED_SIGNATURE_KEY = os.environ.get('TRUSTED_SIGNATURE_KEY', '')

@@ -4,11 +4,14 @@ import logging
 import re
 import uuid
 from typing import Optional
+from urllib.parse import urlparse
 
 import aiohttp
 import websockets
 from open_webui.env import AIOHTTP_CLIENT_ALLOW_REDIRECTS
 from pydantic import BaseModel
+
+from open_webui.env import AIOHTTP_CLIENT_ALLOW_REDIRECTS, WEB_DOMAIN
 
 logger = logging.getLogger(__name__)
 
@@ -191,12 +194,54 @@ class JupyterCodeExecuter:
 
 
 MARKDOWN_LINK_PATTERN = re.compile(r'\[([^\]]*)\]\(([^)]+)\)')
+FILE_API_PATH_PATTERN = re.compile(r'/api/v1/files/[^\s\)\]]+')
 
 
-def normalize_download_target(target: str, files: list | None = None, base_url: str = '') -> str:
+def build_file_download_origin(web_domain: str | None = None) -> str:
+    """Build origin for /api/v1/files/... URLs from WEB_DOMAIN (env) or override."""
+    domain = (web_domain or WEB_DOMAIN or '').strip() or 'localhost'
+
+    if domain.startswith(('http://', 'https://')):
+        parsed = urlparse(domain)
+        if parsed.scheme and parsed.netloc:
+            return f'{parsed.scheme}://{parsed.netloc}'
+        return domain.rstrip('/')
+
+    if domain.startswith('localhost') or domain.startswith('127.0.0.1'):
+        host = domain if ':' in domain else 'localhost:8080'
+        return f'http://{host}'
+
+    return f'https://{domain}'
+
+
+def resolve_file_api_url(path_or_url: str, web_domain: str | None = None) -> str:
+    """Build a correct public file download URL from a path or malformed absolute URL."""
+    target = path_or_url.strip()
+    if not target:
+        return target
+
+    if target.lower().startswith('sandbox:'):
+        target = target.split(':', 1)[1]
+
+    path_match = FILE_API_PATH_PATTERN.search(target)
+    if not path_match:
+        return path_or_url
+
+    api_path = path_match.group(0)
+    origin = build_file_download_origin(web_domain)
+    if origin:
+        return f'{origin}{api_path}'
+
+    return api_path
+
+
+def normalize_download_target(target: str, files: list | None = None, web_domain: str | None = None) -> str:
     target = target.strip()
     if target.lower().startswith('sandbox:'):
         target = target.split(':', 1)[1]
+
+    if target.startswith(('http://', 'https://')) and '/api/v1/files/' in target:
+        return resolve_file_api_url(target, web_domain)
 
     if target.startswith('/mnt/uploads/'):
         filename = target.rsplit('/', 1)[-1]
@@ -207,34 +252,32 @@ def normalize_download_target(target: str, files: list | None = None, base_url: 
             if name == filename or name.split('/')[-1] == filename:
                 url = file_item.get('url', '')
                 if url:
-                    return url
+                    return resolve_file_api_url(url, web_domain)
 
     if target.startswith('/api/v1/files/'):
-        if base_url:
-            return f'{base_url.rstrip("/")}{target}'
-        return target
+        return resolve_file_api_url(target, web_domain)
 
     return target
 
 
-def sanitize_download_links(text: str, files: list | None = None, base_url: str = '') -> str:
+def sanitize_download_links(text: str, files: list | None = None, web_domain: str | None = None) -> str:
     if not text or not isinstance(text, str):
         return text
 
     def replace_link(match: re.Match) -> str:
         label, target = match.group(1), match.group(2)
-        return f'[{label}]({normalize_download_target(target, files, base_url)})'
+        return f'[{label}]({normalize_download_target(target, files, web_domain)})'
 
     text = MARKDOWN_LINK_PATTERN.sub(replace_link, text)
     text = re.sub(
         r'sandbox:(/api/v1/files/[^\s\)\]]+)',
-        lambda match: normalize_download_target(match.group(1), files, base_url),
+        lambda match: normalize_download_target(match.group(1), files, web_domain),
         text,
         flags=re.IGNORECASE,
     )
     text = re.sub(
         r'sandbox:(/mnt/uploads/[^\s\)\]]+)',
-        lambda match: normalize_download_target(match.group(0), files, base_url),
+        lambda match: normalize_download_target(match.group(0), files, web_domain),
         text,
         flags=re.IGNORECASE,
     )
@@ -278,18 +321,25 @@ def collect_output_files(output: list) -> list:
     return files
 
 
-def rewrite_output_download_links(output: list, base_url: str = '') -> list:
+def rewrite_output_download_links(output: list, web_domain: str | None = None) -> list:
     files = collect_output_files(output)
+
+    for file_item in files:
+        if isinstance(file_item, dict) and file_item.get('url'):
+            file_item['url'] = resolve_file_api_url(file_item['url'], web_domain)
 
     for item in output:
         if item.get('type') == 'message':
             for part in item.get('content') or []:
                 if isinstance(part.get('text'), str):
-                    part['text'] = sanitize_download_links(part['text'], files, base_url)
+                    part['text'] = sanitize_download_links(part['text'], files, web_domain)
         elif item.get('type') == 'function_call_output':
+            for file_item in item.get('files') or []:
+                if isinstance(file_item, dict) and file_item.get('url'):
+                    file_item['url'] = resolve_file_api_url(file_item['url'], web_domain)
             for part in item.get('output') or []:
                 if isinstance(part.get('text'), str):
-                    part['text'] = sanitize_download_links(part['text'], files, base_url)
+                    part['text'] = sanitize_download_links(part['text'], files, web_domain)
 
     return output
 
