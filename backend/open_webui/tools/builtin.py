@@ -16,6 +16,7 @@ from typing import Optional
 
 from fastapi import Request
 
+from open_webui.models.users import UserModel
 from open_webui.models.channels import Channel, ChannelMember, Channels
 from open_webui.models.chats import Chats
 from open_webui.models.config import Config
