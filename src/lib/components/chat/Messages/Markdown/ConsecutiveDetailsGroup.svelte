@@ -13,6 +13,7 @@
 	import FullHeightIframe from '$lib/components/common/FullHeightIframe.svelte';
 
 	import { settings } from '$lib/stores';
+	import { WEBUI_API_BASE_URL } from '$lib/constants';
 
 	const i18n = getContext('i18n');
 
@@ -71,6 +72,32 @@
 				}
 			} catch {}
 		}
+		return result;
+	})();
+
+	// Collect downloadable files from tool_calls so links stay visible when collapsed
+	$: allDownloadFiles = (() => {
+		const result: Array<{ name?: string; url?: string }> = [];
+		const seenUrls = new Set<string>();
+
+		for (const t of tokens) {
+			if (t?.attributes?.type !== 'tool_calls') continue;
+			const raw = decode(t.attributes?.files ?? '');
+			try {
+				const parsed = parseJSONString(raw);
+				if (!Array.isArray(parsed)) continue;
+				for (const file of parsed) {
+					if (typeof file !== 'object' || !file?.url || seenUrls.has(file.url)) continue;
+					seenUrls.add(file.url);
+					const isImage =
+						file.type === 'image' ||
+						(typeof file.content_type === 'string' && file.content_type.startsWith('image/'));
+					if (isImage) continue;
+					result.push(file);
+				}
+			} catch {}
+		}
+
 		return result;
 	})();
 
@@ -155,6 +182,24 @@
 			</div>
 		</div>
 	</button>
+
+	{#if allDownloadFiles.length > 0}
+		<div class="flex flex-col gap-1 mt-1">
+			{#each allDownloadFiles as file}
+				{#if file.url}
+					<a
+						class="inline-flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 hover:underline"
+						href={file.url.startsWith('http') ? file.url : `${WEBUI_API_BASE_URL}${file.url}`}
+						target="_blank"
+						rel="noopener noreferrer"
+						download={file.name}
+					>
+						{$i18n.t('Download')} {file.name || $i18n.t('File')}
+					</a>
+				{/if}
+			{/each}
+		</div>
+	{/if}
 
 	{#if open}
 		<div transition:slide={{ duration: 300, easing: quintOut, axis: 'y' }}>

@@ -618,7 +618,13 @@ CODE_INTERPRETER_PYODIDE_PROMPT = """
 - User-uploaded files are available at `/mnt/uploads/`. When the user asks you to work with their files, read from this directory.
 - You can also write output files to `/mnt/uploads/` so the user can access and download them from the file browser.
 - The file system persists across code executions within the same session.
-- Use `import os; os.listdir('/mnt/uploads')` to discover available files."""
+- Use `import os; os.listdir('/mnt/uploads')` to discover available files.
+
+##### Download Links
+
+- After `execute_code` writes a file, the tool result includes HTTP download URLs under a `Files:` section.
+- When sharing files with the user, use **only those HTTP URLs** exactly as returned.
+- **Never** link to `sandbox:`, `file://`, or bare `/mnt/uploads/` paths — those are internal and will not work for the user."""
 
 
 ####################################
