@@ -265,7 +265,7 @@
 				{:else if typeof file === 'object'}
 					{#if (file.type === 'image' || (file?.content_type ?? '').startsWith('image/')) && file.url}
 						<Image id={`${componentId}-tool-call-result-${idx}`} src={file.url} alt="Image" />
-					{:else if file.url && !grouped}
+					{:else if file.url}
 						<a
 							class="inline-flex items-center gap-1.5 text-xs text-blue-600 dark:text-blue-400 hover:underline mt-1"
 							href={file.url.startsWith('http') ? file.url : `${WEBUI_API_BASE_URL}${file.url}`}
