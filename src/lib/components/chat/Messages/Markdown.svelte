@@ -2,7 +2,6 @@
 	import { onDestroy } from 'svelte';
 	import { marked } from 'marked';
 	import { replaceTokens, processResponseContent } from '$lib/utils';
-	import { sanitizeDownloadLinks } from '$lib/utils/sanitizeDownloadLinks';
 	import { user } from '$lib/stores';
 
 	import markedExtension from '$lib/utils/marked/extension';
@@ -65,9 +64,7 @@
 		if (content === lastContent) return;
 		lastContent = content;
 
-		const processed = sanitizeDownloadLinks(
-			replaceTokens(processResponseContent(content), model?.name, $user?.name)
-		);
+		const processed = replaceTokens(processResponseContent(content), model?.name, $user?.name);
 		if (processed === lastParsedContent) return;
 		lastParsedContent = processed;
 
