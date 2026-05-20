@@ -981,13 +981,10 @@ async def process_tool_result(
                     for file_item in files:
                         if isinstance(file_item, dict) and file_item.get('url'):
                             tool_result_files.append(file_item)
-                    base_url = str(
-                        getattr(request.app.state.config, 'WEBUI_URL', '') or request.base_url
-                    ).rstrip('/')
                     for key in ('stdout', 'stderr', 'result'):
                         value = parsed_result.get(key)
                         if isinstance(value, str):
-                            parsed_result[key] = sanitize_download_links(value, files, base_url)
+                            parsed_result[key] = sanitize_download_links(value, files)
                     tool_result = json.dumps(parsed_result, ensure_ascii=False)
         except json.JSONDecodeError:
             pass
@@ -5277,10 +5274,7 @@ async def streaming_chat_response_handler(response, ctx):
                     if item.get('status') == 'in_progress':
                         item['status'] = 'completed'
 
-                webui_url = str(
-                    getattr(request.app.state.config, 'WEBUI_URL', '') or request.base_url
-                ).rstrip('/')
-                rewrite_output_download_links(output, webui_url)
+                rewrite_output_download_links(output)
 
                 title = (
                     await Chats.get_chat_title_by_id(metadata['chat_id'])
@@ -5366,10 +5360,7 @@ async def streaming_chat_response_handler(response, ctx):
                     await event_emitter({'type': 'chat:tasks:cancel'})
                     if not metadata.get('chat_id', '').startswith('channel:'):
                         if not ENABLE_REALTIME_CHAT_SAVE:
-                            webui_url = str(
-                                getattr(request.app.state.config, 'WEBUI_URL', '') or request.base_url
-                            ).rstrip('/')
-                            rewrite_output_download_links(output, webui_url)
+                            rewrite_output_download_links(output)
                             await Chats.upsert_message_to_chat_by_id_and_message_id(
                                 metadata['chat_id'],
                                 metadata['message_id'],
