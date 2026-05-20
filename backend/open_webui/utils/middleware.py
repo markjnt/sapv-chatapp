@@ -124,8 +124,43 @@ from open_webui.utils.tools import (
     get_tools,
     get_updated_tool_function,
 )
-from open_webui.utils.webhook import post_webhook
-from starlette.responses import JSONResponse, Response, StreamingResponse
+from open_webui.utils.access_control import has_connection_access
+from open_webui.utils.access_control.files import get_accessible_folder_files
+from open_webui.utils.plugin import load_function_module_by_id
+from open_webui.utils.filter import (
+    get_sorted_filter_ids,
+    process_filter_functions,
+)
+from open_webui.utils.code_interpreter import append_file_download_links, execute_code_jupyter
+from open_webui.utils.payload import apply_system_prompt_to_body
+from open_webui.utils.response import normalize_usage
+from open_webui.utils.mcp.client import MCPClient
+
+
+from open_webui.config import (
+    CACHE_DIR,
+    DEFAULT_VOICE_MODE_PROMPT_TEMPLATE,
+    DEFAULT_TOOLS_FUNCTION_CALLING_PROMPT_TEMPLATE,
+    DEFAULT_CODE_INTERPRETER_PROMPT,
+    CODE_INTERPRETER_PYODIDE_PROMPT,
+    CODE_INTERPRETER_BLOCKED_MODULES,
+)
+from open_webui.env import (
+    GLOBAL_LOG_LEVEL,
+    ENABLE_CHAT_RESPONSE_BASE64_IMAGE_URL_CONVERSION,
+    CHAT_RESPONSE_STREAM_DELTA_CHUNK_SIZE,
+    CHAT_RESPONSE_MAX_TOOL_CALL_RETRIES,
+    BYPASS_MODEL_ACCESS_CONTROL,
+    ENABLE_REALTIME_CHAT_SAVE,
+    ENABLE_QUERIES_CACHE,
+    RAG_SYSTEM_CONTEXT,
+    ENABLE_FORWARD_USER_INFO_HEADERS,
+    FORWARD_SESSION_INFO_HEADER_CHAT_ID,
+    FORWARD_SESSION_INFO_HEADER_MESSAGE_ID,
+    ENABLE_RESPONSES_API_STATEFUL,
+)
+from open_webui.utils.headers import include_user_info_headers
+from open_webui.constants import TASKS
 
 logging.basicConfig(stream=sys.stdout, level=GLOBAL_LOG_LEVEL)
 log = logging.getLogger(__name__)
@@ -1109,6 +1144,18 @@ async def process_tool_result(
                         }
 
     tool_result_files = []
+
+    if tool_function_name == 'execute_code' and isinstance(tool_result, str):
+        try:
+            parsed_result = json.loads(tool_result)
+            if isinstance(parsed_result, dict):
+                files = parsed_result.get('files')
+                if isinstance(files, list):
+                    for file_item in files:
+                        if isinstance(file_item, dict) and file_item.get('url'):
+                            tool_result_files.append(file_item)
+        except json.JSONDecodeError:
+            pass
 
     # Detect base64 image data URIs from tool results (e.g. binary image
     # responses from execute_tool_server).  Move the data URI to
@@ -5046,6 +5093,13 @@ async def streaming_chat_response_handler(response, ctx):
                                                 )
                                                 resultLines[idx] = f'![Output Image]({image_url})'
                                         ci_output['result'] = '\n'.join(resultLines)
+
+                                    files = ci_output.get('files')
+                                    if isinstance(files, list) and files:
+                                        ci_output['stdout'] = append_file_download_links(
+                                            ci_output.get('stdout', ''),
+                                            files,
+                                        )
                         except Exception as e:
                             ci_output = str(e)
 

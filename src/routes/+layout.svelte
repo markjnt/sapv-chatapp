@@ -40,6 +40,10 @@
 		desktopEvent
 	} from '$lib/stores';
 	import { getFileContentById } from '$lib/apis/files';
+	import {
+		snapshotPyodideUploadFiles,
+		uploadNewPyodideFiles
+	} from '$lib/utils/pyodideOutputFiles';
 	import { goto } from '$app/navigation';
 	import { page } from '$app/stores';
 	import { beforeNavigate } from '$app/navigation';
@@ -247,6 +251,7 @@
 		let result = null;
 		let stdout = null;
 		let stderr = null;
+		let outputFiles = [];
 
 		let executing = true;
 		let packages = [
@@ -266,6 +271,13 @@
 		].filter(Boolean);
 
 		const worker = getOrCreateWorker();
+
+		let uploadsBefore = null;
+		try {
+			uploadsBefore = await snapshotPyodideUploadFiles(worker);
+		} catch (e) {
+			console.error('Failed to snapshot Pyodide uploads:', e);
+		}
 
 		// Fetch file content from the server and prepare for the worker
 		let filePayloads = [];
@@ -294,30 +306,64 @@
 			files: filePayloads.length > 0 ? filePayloads : undefined
 		});
 
+		let finished = false;
+
+		const cleanupListeners = () => {
+			clearTimeout(timeoutId);
+			worker.removeEventListener('message', onMessage);
+			worker.removeEventListener('error', onError);
+		};
+
+		const finishExecution = async (payload) => {
+			if (finished) return;
+			finished = true;
+			executing = false;
+			cleanupListeners();
+
+			if (uploadsBefore) {
+				try {
+					outputFiles = await uploadNewPyodideFiles(
+						worker,
+						localStorage.token,
+						uploadsBefore,
+						$chatId ? { chat_id: $chatId } : null
+					);
+					if (outputFiles.length > 0) {
+						window.dispatchEvent(new Event('pyodide:files'));
+					}
+				} catch (e) {
+					console.error('Failed to upload Pyodide output files:', e);
+				}
+			}
+
+			if (cb) {
+				cb(
+					JSON.parse(
+						JSON.stringify(
+							{
+								stdout: payload.stdout,
+								stderr: payload.stderr,
+								result: payload.result,
+								...(outputFiles.length > 0 ? { files: outputFiles } : {})
+							},
+							(_key, value) => (typeof value === 'bigint' ? value.toString() : value)
+						)
+					)
+				);
+			}
+		};
+
 		// Timeout for this specific execution (not the worker itself)
 		let timeoutId = setTimeout(() => {
 			if (executing) {
-				executing = false;
 				stderr = 'Execution Time Limit Exceeded';
 
 				// Terminate and recreate the worker on timeout
+				cleanupListeners();
 				worker.terminate();
 				pyodideWorker.set(null);
 
-				if (cb) {
-					cb(
-						JSON.parse(
-							JSON.stringify(
-								{
-									stdout: stdout,
-									stderr: stderr,
-									result: result
-								},
-								(_key, value) => (typeof value === 'bigint' ? value.toString() : value)
-							)
-						)
-					);
-				}
+				finishExecution({ stdout, stderr, result });
 			}
 		}, 60000);
 
@@ -330,53 +376,18 @@
 			if (data.type && data.type.startsWith('fs:')) return;
 
 			console.log('pyodideWorker.onmessage', event);
-			clearTimeout(timeoutId);
-			worker.removeEventListener('message', onMessage);
-			worker.removeEventListener('error', onError);
 
 			data['stdout'] && (stdout = data['stdout']);
 			data['stderr'] && (stderr = data['stderr']);
 			data['result'] && (result = data['result']);
 
-			if (cb) {
-				cb(
-					JSON.parse(
-						JSON.stringify(
-							{
-								stdout: stdout,
-								stderr: stderr,
-								result: result
-							},
-							(_key, value) => (typeof value === 'bigint' ? value.toString() : value)
-						)
-					)
-				);
-			}
-
-			executing = false;
+			finishExecution({ stdout, stderr, result });
 		};
 
 		const onError = (event) => {
 			console.log('pyodideWorker.onerror', event);
-			clearTimeout(timeoutId);
-			worker.removeEventListener('message', onMessage);
-			worker.removeEventListener('error', onError);
 
-			if (cb) {
-				cb(
-					JSON.parse(
-						JSON.stringify(
-							{
-								stdout: stdout,
-								stderr: stderr,
-								result: result
-							},
-							(_key, value) => (typeof value === 'bigint' ? value.toString() : value)
-						)
-					)
-				);
-			}
-			executing = false;
+			finishExecution({ stdout, stderr, result });
 		};
 
 		worker.addEventListener('message', onMessage);
