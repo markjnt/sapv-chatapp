@@ -1,6 +1,7 @@
 import asyncio
 import json
 import logging
+import re
 import uuid
 from typing import Optional
 
@@ -187,6 +188,110 @@ class JupyterCodeExecuter:
         self.result.stdout = stdout.strip()
         self.result.stderr = stderr.strip()
         self.result.result = '\n'.join(result).strip() if result else ''
+
+
+MARKDOWN_LINK_PATTERN = re.compile(r'\[([^\]]*)\]\(([^)]+)\)')
+
+
+def normalize_download_target(target: str, files: list | None = None, base_url: str = '') -> str:
+    target = target.strip()
+    if target.lower().startswith('sandbox:'):
+        target = target.split(':', 1)[1]
+
+    if target.startswith('/mnt/uploads/'):
+        filename = target.rsplit('/', 1)[-1]
+        for file_item in files or []:
+            if not isinstance(file_item, dict):
+                continue
+            name = file_item.get('name', '')
+            if name == filename or name.split('/')[-1] == filename:
+                url = file_item.get('url', '')
+                if url:
+                    return url
+
+    if target.startswith('/api/v1/files/'):
+        if base_url:
+            return f'{base_url.rstrip("/")}{target}'
+        return target
+
+    return target
+
+
+def sanitize_download_links(text: str, files: list | None = None, base_url: str = '') -> str:
+    if not text or not isinstance(text, str):
+        return text
+
+    def replace_link(match: re.Match) -> str:
+        label, target = match.group(1), match.group(2)
+        return f'[{label}]({normalize_download_target(target, files, base_url)})'
+
+    text = MARKDOWN_LINK_PATTERN.sub(replace_link, text)
+    text = re.sub(
+        r'sandbox:(/api/v1/files/[^\s\)\]]+)',
+        lambda match: normalize_download_target(match.group(1), files, base_url),
+        text,
+        flags=re.IGNORECASE,
+    )
+    text = re.sub(
+        r'sandbox:(/mnt/uploads/[^\s\)\]]+)',
+        lambda match: normalize_download_target(match.group(0), files, base_url),
+        text,
+        flags=re.IGNORECASE,
+    )
+    return text
+
+
+def collect_output_files(output: list) -> list:
+    files: list = []
+    seen_urls: set[str] = set()
+
+    for item in output:
+        if item.get('type') != 'function_call_output':
+            continue
+
+        for file_item in item.get('files') or []:
+            if not isinstance(file_item, dict):
+                continue
+            url = file_item.get('url')
+            if url and url not in seen_urls:
+                seen_urls.add(url)
+                files.append(file_item)
+
+        for part in item.get('output') or []:
+            text = part.get('text', '')
+            if not isinstance(text, str) or not text:
+                continue
+            try:
+                parsed = json.loads(text)
+            except json.JSONDecodeError:
+                continue
+            if not isinstance(parsed, dict):
+                continue
+            for file_item in parsed.get('files') or []:
+                if not isinstance(file_item, dict):
+                    continue
+                url = file_item.get('url')
+                if url and url not in seen_urls:
+                    seen_urls.add(url)
+                    files.append(file_item)
+
+    return files
+
+
+def rewrite_output_download_links(output: list, base_url: str = '') -> list:
+    files = collect_output_files(output)
+
+    for item in output:
+        if item.get('type') == 'message':
+            for part in item.get('content') or []:
+                if isinstance(part.get('text'), str):
+                    part['text'] = sanitize_download_links(part['text'], files, base_url)
+        elif item.get('type') == 'function_call_output':
+            for part in item.get('output') or []:
+                if isinstance(part.get('text'), str):
+                    part['text'] = sanitize_download_links(part['text'], files, base_url)
+
+    return output
 
 
 def append_file_download_links(stdout: str, files: list) -> str:

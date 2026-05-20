@@ -131,7 +131,12 @@ from open_webui.utils.filter import (
     get_sorted_filter_ids,
     process_filter_functions,
 )
-from open_webui.utils.code_interpreter import append_file_download_links, execute_code_jupyter
+from open_webui.utils.code_interpreter import (
+    append_file_download_links,
+    execute_code_jupyter,
+    rewrite_output_download_links,
+    sanitize_download_links,
+)
 from open_webui.utils.payload import apply_system_prompt_to_body
 from open_webui.utils.response import normalize_usage
 from open_webui.utils.mcp.client import MCPClient
@@ -1154,6 +1159,14 @@ async def process_tool_result(
                     for file_item in files:
                         if isinstance(file_item, dict) and file_item.get('url'):
                             tool_result_files.append(file_item)
+                    base_url = str(
+                        getattr(request.app.state.config, 'WEBUI_URL', '') or request.base_url
+                    ).rstrip('/')
+                    for key in ('stdout', 'stderr', 'result'):
+                        value = parsed_result.get(key)
+                        if isinstance(value, str):
+                            parsed_result[key] = sanitize_download_links(value, files, base_url)
+                    tool_result = json.dumps(parsed_result, ensure_ascii=False)
         except json.JSONDecodeError:
             pass
 
@@ -5160,6 +5173,11 @@ async def streaming_chat_response_handler(response, ctx):
                     if item.get('status') == 'in_progress':
                         item['status'] = 'completed'
 
+                webui_url = str(
+                    getattr(request.app.state.config, 'WEBUI_URL', '') or request.base_url
+                ).rstrip('/')
+                rewrite_output_download_links(output, webui_url)
+
                 title = (
                     await Chats.get_chat_title_by_id(metadata['chat_id'])
                     if not metadata.get('chat_id', '').startswith('channel:')
@@ -5246,6 +5264,10 @@ async def streaming_chat_response_handler(response, ctx):
                     await event_emitter({'type': 'chat:tasks:cancel'})
                     if not metadata.get('chat_id', '').startswith('channel:'):
                         if not ENABLE_REALTIME_CHAT_SAVE:
+                            webui_url = str(
+                                getattr(request.app.state.config, 'WEBUI_URL', '') or request.base_url
+                            ).rstrip('/')
+                            rewrite_output_download_links(output, webui_url)
                             await Chats.upsert_message_to_chat_by_id_and_message_id(
                                 metadata['chat_id'],
                                 metadata['message_id'],
