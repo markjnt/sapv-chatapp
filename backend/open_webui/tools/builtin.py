@@ -24,7 +24,6 @@ from open_webui.models.groups import Groups
 from open_webui.models.memories import Memories
 from open_webui.models.messages import Message, Messages
 from open_webui.models.notes import Notes
-from open_webui.utils.code_interpreter import append_file_download_links
 from open_webui.retrieval.utils import get_content_from_url
 from open_webui.retrieval.vector.async_client import ASYNC_VECTOR_DB_CLIENT
 from open_webui.routers.images import (
@@ -594,7 +593,6 @@ async def execute_code(
 
         if output_files:
             response['files'] = output_files
-            response['stdout'] = append_file_download_links(stdout, output_files)
 
         return json.dumps(response, ensure_ascii=False)
     except Exception as e:

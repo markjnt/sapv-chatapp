@@ -321,6 +321,42 @@ def collect_output_files(output: list) -> list:
     return files
 
 
+def _is_execute_code_payload(data: dict) -> bool:
+    return isinstance(data, dict) and any(key in data for key in ('stdout', 'stderr', 'result', 'files'))
+
+
+def finalize_execute_code_payload(data: dict, web_domain: str | None = None) -> dict:
+    files = data.get('files')
+    if not isinstance(files, list):
+        files = []
+
+    for file_item in files:
+        if isinstance(file_item, dict) and file_item.get('url'):
+            file_item['url'] = resolve_file_api_url(file_item['url'], web_domain)
+
+    if files:
+        stdout = data.get('stdout', '')
+        if isinstance(stdout, str):
+            download_lines = [
+                f"- [{file_item.get('name', 'file')}]({file_item.get('url')})"
+                for file_item in files
+                if isinstance(file_item, dict) and file_item.get('url')
+            ]
+            if download_lines:
+                files_section = 'Files:\n' + '\n'.join(download_lines)
+                if files_section not in stdout:
+                    data['stdout'] = '\n'.join(
+                        part for part in [stdout, files_section] if part
+                    ).strip()
+
+    for key in ('stdout', 'stderr', 'result'):
+        value = data.get(key)
+        if isinstance(value, str):
+            data[key] = sanitize_download_links(value, files, web_domain)
+
+    return data
+
+
 def rewrite_output_download_links(output: list, web_domain: str | None = None) -> list:
     files = collect_output_files(output)
 
@@ -334,29 +370,28 @@ def rewrite_output_download_links(output: list, web_domain: str | None = None) -
                 if isinstance(part.get('text'), str):
                     part['text'] = sanitize_download_links(part['text'], files, web_domain)
         elif item.get('type') == 'function_call_output':
-            for file_item in item.get('files') or []:
-                if isinstance(file_item, dict) and file_item.get('url'):
-                    file_item['url'] = resolve_file_api_url(file_item['url'], web_domain)
             for part in item.get('output') or []:
-                if isinstance(part.get('text'), str):
-                    part['text'] = sanitize_download_links(part['text'], files, web_domain)
+                text = part.get('text')
+                if not isinstance(text, str):
+                    continue
+                try:
+                    parsed = json.loads(text)
+                except json.JSONDecodeError:
+                    part['text'] = sanitize_download_links(text, files, web_domain)
+                    continue
+                if _is_execute_code_payload(parsed):
+                    part['text'] = json.dumps(
+                        finalize_execute_code_payload(parsed, web_domain),
+                        ensure_ascii=False,
+                    )
+                else:
+                    part['text'] = sanitize_download_links(text, files, web_domain)
+        elif item.get('type') == 'open_webui:code_interpreter':
+            ci_output = item.get('output')
+            if isinstance(ci_output, dict):
+                item['output'] = finalize_execute_code_payload(ci_output, web_domain)
 
     return output
-
-
-def append_file_download_links(stdout: str, files: list) -> str:
-    if not isinstance(files, list) or not files:
-        return stdout
-
-    download_lines = [
-        f"- [{file_item.get('name', 'file')}]({file_item.get('url')})"
-        for file_item in files
-        if isinstance(file_item, dict) and file_item.get('url')
-    ]
-    if not download_lines:
-        return stdout
-
-    return '\n'.join(part for part in [stdout, 'Files:\n' + '\n'.join(download_lines)] if part).strip()
 
 
 async def execute_code_jupyter(
