@@ -465,7 +465,8 @@ You have access to a Python code interpreter via: `<code_interpreter type="code"
 - **Always print meaningful outputs** (results, tables, summaries, visuals). Avoid implicit outputs; use explicit print statements.
 - After obtaining output, **provide a concise analysis, interpretation, or next steps** to help the user understand the findings.
 - If results are unclear or unexpected, refine the code and re-execute. Iterate until you deliver meaningful insights.
-- **If a link to an image, audio, or any file appears in the output, display it exactly as-is** in your response so the user can access it. Do not modify the link.
+- **If download URLs appear in the tool output under a `Files:` section, copy them exactly for the user** — never use `sandbox:`, `file://`, or `/mnt/uploads/` in links, and never prefix `/api/v1/files/...` with `sandbox:`.
+- **If a link to an image appears in the output as a data URL or HTTP URL, display it exactly as returned.**
 - Respond in the chat's primary language. Default to English if multilingual.
 
 Ensure the code interpreter is effectively utilized to achieve the highest-quality analysis for the user."""
@@ -481,15 +482,17 @@ CODE_INTERPRETER_PYODIDE_PROMPT = """
 ##### Persistent File System
 
 - User-uploaded files are available at `/mnt/uploads/`. When the user asks you to work with their files, read from this directory.
-- You can also write output files to `/mnt/uploads/` so the user can access and download them from the file browser.
+- Write output files to `/mnt/uploads/` during code execution only (not for user-facing download links).
 - The file system persists across code executions within the same session.
 - Use `import os; os.listdir('/mnt/uploads')` to discover available files.
 
 ##### Download Links
 
-- After `execute_code` writes a file, the tool result includes HTTP download URLs under a `Files:` section.
-- When sharing files with the user, use **only those HTTP URLs** exactly as returned.
-- **Never** link to `sandbox:`, `file://`, or bare `/mnt/uploads/` paths — those are internal and will not work for the user."""
+- After code execution (`execute_code` or `<code_interpreter>`), downloadable links appear in the output under `Files:` as HTTP URLs (`/api/v1/files/.../content`).
+- When sharing files with the user, copy those URLs **exactly** from `Files:` — character for character.
+- **Never** use `sandbox:`, `file://`, or `/mnt/uploads/` in user-facing links.
+- **Never** prefix `/api/v1/files/...` with `sandbox:`.
+- If no `Files:` URLs are present, tell the user the file could not be created — do not invent a link."""
 
 
 ####################################

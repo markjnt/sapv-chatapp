@@ -444,8 +444,12 @@ async def execute_code(
     Use this to perform calculations, data analysis, generate visualizations,
     or run any Python code that would help answer the user's question.
 
+    When output files are created, HTTP download URLs appear in stdout under a
+    `Files:` section. The assistant must share those URLs exactly — never
+    sandbox: or /mnt/uploads/ paths in user-facing links.
+
     :param code: The Python code to execute
-    :return: JSON with stdout, stderr, and result from execution
+    :return: JSON with stdout, stderr, result, and optional files from execution
     """
     from uuid import uuid4
 
