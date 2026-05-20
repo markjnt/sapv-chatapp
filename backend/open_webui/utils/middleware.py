@@ -132,10 +132,8 @@ from open_webui.utils.filter import (
     process_filter_functions,
 )
 from open_webui.utils.code_interpreter import (
-    append_file_download_links,
     execute_code_jupyter,
     rewrite_output_download_links,
-    sanitize_download_links,
 )
 from open_webui.utils.payload import apply_system_prompt_to_body
 from open_webui.utils.response import normalize_usage
@@ -477,6 +475,12 @@ def _render_openai_tool_call_handler(item: dict, done: bool) -> str:
     if done:
         return f'<details type="tool_calls" done="true" id="{call_id}" name="{escaped_name}" arguments="">\n<summary>Tool Executed</summary>\n{html.escape(summary)}\n</details>\n'
     return f'<details type="tool_calls" done="false" id="{call_id}" name="{escaped_name}" arguments="">\n<summary>Executing...</summary>\n</details>\n'
+
+
+def serialize_output_for_client(output: list, web_domain: str | None = None) -> str:
+    """Finalize download links in output, then serialize for client display."""
+    rewrite_output_download_links(output, web_domain)
+    return serialize_output(output)
 
 
 def serialize_output(output: list) -> str:
@@ -1159,11 +1163,6 @@ async def process_tool_result(
                     for file_item in files:
                         if isinstance(file_item, dict) and file_item.get('url'):
                             tool_result_files.append(file_item)
-                    for key in ('stdout', 'stderr', 'result'):
-                        value = parsed_result.get(key)
-                        if isinstance(value, str):
-                            parsed_result[key] = sanitize_download_links(value, files)
-                    tool_result = json.dumps(parsed_result, ensure_ascii=False)
         except json.JSONDecodeError:
             pass
 
@@ -4857,6 +4856,9 @@ async def streaming_chat_response_handler(response, ctx):
                                     )
                         tool_call_sources.clear()
 
+                    # Finalize download links before building client payloads.
+                    client_content = serialize_output_for_client(output)
+
                     # Strip input_image parts (large base64 data URIs) from the
                     # output sent to the frontend — they're only for LLM consumption
                     # via convert_output_to_messages.
@@ -4872,7 +4874,7 @@ async def streaming_chat_response_handler(response, ctx):
                         {
                             'type': 'chat:completion',
                             'data': {
-                                'content': serialize_output(output),
+                                'content': client_content,
                                 'output': frontend_output,
                             },
                         }
@@ -4996,7 +4998,7 @@ async def streaming_chat_response_handler(response, ctx):
                             {
                                 'type': 'chat:completion',
                                 'data': {
-                                    'content': serialize_output(output),
+                                    'content': serialize_output_for_client(output),
                                     'output': output,
                                 },
                             }
@@ -5104,12 +5106,6 @@ async def streaming_chat_response_handler(response, ctx):
                                                 resultLines[idx] = f'![Output Image]({image_url})'
                                         ci_output['result'] = '\n'.join(resultLines)
 
-                                    files = ci_output.get('files')
-                                    if isinstance(files, list) and files:
-                                        ci_output['stdout'] = append_file_download_links(
-                                            ci_output.get('stdout', ''),
-                                            files,
-                                        )
                         except Exception as e:
                             ci_output = str(e)
 
@@ -5130,7 +5126,7 @@ async def streaming_chat_response_handler(response, ctx):
                             {
                                 'type': 'chat:completion',
                                 'data': {
-                                    'content': serialize_output(output),
+                                    'content': serialize_output_for_client(output),
                                     'output': output,
                                 },
                             }
@@ -5170,8 +5166,6 @@ async def streaming_chat_response_handler(response, ctx):
                     if item.get('status') == 'in_progress':
                         item['status'] = 'completed'
 
-                rewrite_output_download_links(output)
-
                 title = (
                     await Chats.get_chat_title_by_id(metadata['chat_id'])
                     if not metadata.get('chat_id', '').startswith('channel:')
@@ -5179,7 +5173,7 @@ async def streaming_chat_response_handler(response, ctx):
                 )
                 data = {
                     'done': True,
-                    'content': serialize_output(output),
+                    'content': serialize_output_for_client(output),
                     'output': output,
                     'title': title,
                     **({'usage': usage} if usage else {}),
@@ -5258,13 +5252,12 @@ async def streaming_chat_response_handler(response, ctx):
                     await event_emitter({'type': 'chat:tasks:cancel'})
                     if not metadata.get('chat_id', '').startswith('channel:'):
                         if not ENABLE_REALTIME_CHAT_SAVE:
-                            rewrite_output_download_links(output)
                             await Chats.upsert_message_to_chat_by_id_and_message_id(
                                 metadata['chat_id'],
                                 metadata['message_id'],
                                 {
                                     'done': True,
-                                    'content': serialize_output(output),
+                                    'content': serialize_output_for_client(output),
                                     'output': output,
                                 },
                             )
