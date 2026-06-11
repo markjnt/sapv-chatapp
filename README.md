@@ -48,8 +48,47 @@ git push origin main --force-with-lease
 
 Falls Konflikte:
 
+Beim Rebase liegen deine Commits **oben** auf dem aktuellen Upstream – genau das willst du. In Konflikt-Dateien gilt:
+
+| Marker | Bedeutung beim Rebase |
+|--------|------------------------|
+| `<<<<<<< HEAD` | Upstream (Open WebUI) |
+| `=======` | Trennlinie |
+| `>>>>>>> dein-commit` | **Deine Änderung** |
+
+**Eigene Version behalten** (ganze Datei):
+
 ```bash
-# Konflikt-Dateien editieren, dann:
+git checkout --theirs pfad/zur/datei
+git add pfad/zur/datei
+git rebase --continue
+```
+
+> Beim Rebase ist `--theirs` deine Version und `--ours` der Upstream – genau andersherum als beim Merge.
+
+**Upstream-Version behalten** (ganze Datei):
+
+```bash
+git checkout --ours pfad/zur/datei
+git add pfad/zur/datei
+git rebase --continue
+```
+
+**Manuell lösen:** Konfliktmarker entfernen und den gewünschten Code (oder eine Mischung) stehen lassen, dann:
+
+```bash
 git add .
 git rebase --continue
+```
+
+**Automatisch deine Version bevorzugen** (bei vielen ähnlichen Konflikten):
+
+```bash
+git rebase -X theirs upstream/main
+```
+
+Rebase abbrechen und zum vorherigen Stand zurück:
+
+```bash
+git rebase --abort
 ```
