@@ -35,12 +35,13 @@ jobs:
           context: .
           file: Dockerfile
           platforms: linux/amd64
-          push: true
+          push: ${{ (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch' }}
           tags: markjnt/sapv-chatapp
           cache-from: type=registry,ref=docker.io/markjnt/sapv-chatapp:buildcache
           cache-to: type=registry,ref=docker.io/markjnt/sapv-chatapp:buildcache,mode=max
 
   deploy:
+    if: (github.event_name == 'push' && github.ref == 'refs/heads/main') || github.event_name == 'workflow_dispatch'
     runs-on: self-hosted
     needs: [build-image]
     steps:
