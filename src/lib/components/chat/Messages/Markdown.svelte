@@ -1,7 +1,5 @@
 <script context="module">
 	import { marked } from 'marked';
-	import { replaceTokens, processResponseContent } from '$lib/utils';
-	import { user } from '$lib/stores';
 
 	import markedExtension from '$lib/utils/marked/extension';
 	import markedKatexExtension from '$lib/utils/marked/katex-extension';
